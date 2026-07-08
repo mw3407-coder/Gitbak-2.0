@@ -9,7 +9,7 @@ interface CursorOverlayProps {
 const CursorOverlay: React.FC<CursorOverlayProps> = ({ 
   isPointing = false,
   targetX,
-  targetY 
+  targetY
 }) => {
   const innerRef = useRef<HTMLDivElement>(null);
   const outerRef = useRef<HTMLDivElement>(null);
