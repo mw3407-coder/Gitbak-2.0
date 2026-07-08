@@ -20,25 +20,10 @@ function loadPage(win: BrowserWindow, page: string): void {
   }
 }
 
-/** The main Flicky app window (settings + status). */
-export function createPanelWindow(): BrowserWindow {
+export function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
-    width: 960,
-    height: 640,
-    minWidth: 820,
-    minHeight: 560,
-    show: false,
-    frame: true,
-    titleBarStyle: 'default',
-    resizable: true,
-    movable: true,
-    minimizable: true,
-    maximizable: true,
-    fullscreenable: false,
-    skipTaskbar: false,
-    transparent: false,
-    backgroundColor: '#0f0f11',
-    title: 'Flicky',
+    width: 1200,
+    height: 800,
     webPreferences: {
       preload: getPreloadPath(),
       contextIsolation: true,
@@ -46,12 +31,39 @@ export function createPanelWindow(): BrowserWindow {
       sandbox: false,
     },
   });
-
   loadPage(win, 'panel');
   return win;
 }
 
-/** A transparent, click-through overlay covering one display. */
+export function createStreamWindow(bounds: StreamWindowBounds): BrowserWindow {
+  const win = new BrowserWindow({
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    hasShadow: false,
+    focusable: false,
+    type: process.platform === 'linux' ? 'dock' : undefined,
+    webPreferences: {
+      preload: getPreloadPath(),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  });
+  loadPage(win, 'stream');
+  return win;
+}
+
 export function createOverlayWindow(display: Display): BrowserWindow {
   const { x, y, width, height } = display.bounds;
 
@@ -81,12 +93,12 @@ export function createOverlayWindow(display: Display): BrowserWindow {
     },
   });
 
-
-  // Do NOT use setIgnoreMouseEvents — it blocks clicks on other apps
-  // Instead, rely on focusable: false and render cursor with pointer-events: none in overlay
+  // Click-through: let mouse events pass to windows underneath
+  // BUT forward mouse move events so cursor can still track
+  win.setIgnoreMouseEvents(true, { forward: true });
 
   // Keep overlay above everything
-  win.setAlwaysOnTop(true, "screen-saver");
+  win.setAlwaysOnTop(true, 'screen-saver');
   win.setFullScreenable(false);
 
   // Linux: ensure overlay stays above all windows including fullscreen apps
@@ -94,88 +106,12 @@ export function createOverlayWindow(display: Display): BrowserWindow {
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     win.setSkipTaskbar(true);
   }
-  
-  // Linux: ensure overlay stays above all windows including fullscreen apps
-  if (process.platform === 'linux') {
-    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-    win.setSkipTaskbar(true);
-  }
-  win.setMinimizable(false);
-
-  // Visible on all workspaces / virtual desktops
-  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
   loadPage(win, 'overlay');
 
-  // Pass display info to overlay so it knows its coordinate space
-  win.webContents.once('did-finish-load', () => {
-    win.webContents.send('display-info', {
-      id: display.id,
-      bounds: display.bounds,
-      scaleFactor: display.scaleFactor,
-    });
+  win.webContents.once('dom-ready', () => {
+    win.webContents.send('display-bounds', { x, y, width, height });
   });
 
   return win;
-}
-
-/**
- * The transparent, draggable "stream" window that mirrors the live Q/A
- * so the user can read, scroll, and copy. It's a frameless BrowserWindow
- * with a CSS-drag region in the header; mouse events are enabled so
- * scrolling and text selection work normally.
- */
-export function createStreamWindow(
-  storedBounds: StreamWindowBounds | null,
-): BrowserWindow {
-  const bounds = storedBounds ?? defaultStreamBounds();
-
-  const win = new BrowserWindow({
-    x: bounds.x,
-    y: bounds.y,
-    width: bounds.width,
-    height: bounds.height,
-    minWidth: 280,
-    minHeight: 180,
-    show: false,
-    frame: false,
-    resizable: true,
-    movable: true,
-    minimizable: false,
-    maximizable: false,
-    fullscreenable: false,
-    skipTaskbar: true,
-    transparent: true,
-    alwaysOnTop: true,
-    hasShadow: false,
-    focusable: true,
-    title: 'Flicky Stream',
-    webPreferences: {
-      preload: getPreloadPath(),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-    },
-  });
-
-  win.setAlwaysOnTop(true, 'floating');
-  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-
-  loadPage(win, 'stream');
-  return win;
-}
-
-function defaultStreamBounds(): StreamWindowBounds {
-  const primary = screen.getPrimaryDisplay();
-  const { workArea } = primary;
-  const width = 380;
-  const height = 320;
-  // Anchor to the bottom-right corner of the primary work area with a
-  // small gutter, so on first launch users can find it easily.
-  return {
-    width,
-    height,
-    x: workArea.x + workArea.width - width - 24,
-    y: workArea.y + workArea.height - height - 24,
-  };
 }
