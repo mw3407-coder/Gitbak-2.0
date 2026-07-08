@@ -1,0 +1,32 @@
+--- a/src/main/companion-manager.ts
++++ b/src/main/companion-manager.ts
+@@ -327,16 +327,25 @@ export class CompanionManager {
+           analytics.trackElementPointed(element.label);
+         }
+ 
+-        if (settings.speakReplies && keyStore.getKeyStatus().elevenlabs) {
++        if (settings.speakReplies) {
+           try {
+-            const audioBuffer = await this.tts.synthesize(cleanText, {
+-              voiceId: settings.voiceId,
+-              speed: settings.voiceSpeed,
+-              stability: settings.voiceStability,
+-            });
++            let audioBuffer: Buffer;
++            const hasElevenLabs = keyStore.getKeyStatus().elevenlabs;
++            
++            if (hasElevenLabs && settings.voiceId) {
++              // Use ElevenLabs if configured
++              audioBuffer = await this.tts.synthesize(cleanText, 'elevenlabs', {
++                voiceId: settings.voiceId,
++                speed: settings.voiceSpeed,
++                stability: settings.voiceStability,
++              });
++            } else {
++              // Use Aria (free, no API key)
++              audioBuffer = await this.tts.synthesize(cleanText, 'aria');
++            }
++            
+             // User may have started a new turn while TTS was synthesizing;
+             // don't play an answer they no longer want to hear.
+             if (!isCurrent()) return;
