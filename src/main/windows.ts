@@ -82,28 +82,20 @@ export function createOverlayWindow(display: Display): BrowserWindow {
   });
 
 
-  // Do NOT use setIgnoreMouseEvents — it blocks clicks on other apps
-  // Instead, rely on focusable: false and render cursor with pointer-events: none in overlay
+  // Click-through: let mouse events pass to windows underneath
+  // BUT forward mouse move events so cursor can still track
+  win.setIgnoreMouseEvents(true, { forward: true });
+
 
   // Keep overlay above everything
   win.setAlwaysOnTop(true, "screen-saver");
   win.setFullScreenable(false);
-
-  // Linux: ensure overlay stays above all windows including fullscreen apps
-  if (process.platform === 'linux') {
-    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-    win.setSkipTaskbar(true);
-  }
   
   // Linux: ensure overlay stays above all windows including fullscreen apps
   if (process.platform === 'linux') {
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     win.setSkipTaskbar(true);
   }
-  win.setMinimizable(false);
-
-  // Visible on all workspaces / virtual desktops
-  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
   loadPage(win, 'overlay');
 
