@@ -234,6 +234,14 @@ const api = {
     ipcRenderer.on('play-audio', handler);
     return () => ipcRenderer.removeListener('play-audio', handler);
   },
+  // handler for cursor state (main -> renderer)
+  onCursorState: (cb: (data: { state: 'idle' | 'pointing'; x: number; y: number }) => void) => {
+    const handler = (_e: Electron.IpcRendererEvent, data: any) => {
+      window.dispatchEvent(new CustomEvent('cursor-state', { detail: data }));
+    };
+    ipcRenderer.on('cursor-state', handler);
+    return () => ipcRenderer.removeListener('cursor-state', handler);
+  },
 };
 
 export type FlickyAPI = typeof api;

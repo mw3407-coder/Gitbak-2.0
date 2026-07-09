@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { VoiceState, DetectedElement } from '../../shared/types';
 import { Waveform } from './Waveform';
+import CursorOverlay from './CursorOverlay';
 
 // Offset the companion cursor ~1/5 inch (≈19px at 96dpi) down-right
 // of the real mouse so the tip doesn't sit directly on top of it.
@@ -285,6 +286,8 @@ export function OverlayApp() {
 
   return (
     <div className="overlay-container">
+      {/* Always render the cursor overlay so it can receive cursor-state events */}
+      <CursorOverlay />
       {showOnThisDisplay && (
         <>
           {/* Raw mouse cursor — rendered at exact mouse position */}

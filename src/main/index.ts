@@ -1,9 +1,10 @@
 import { app, BrowserWindow, Tray, Menu, globalShortcut, screen, ipcMain, shell, nativeImage } from 'electron';
 import path from 'path';
 import { CompanionManager } from './companion-manager';
-import { createPanelWindow, createOverlayWindow, createStreamWindow } from './windows';
+import { createMainWindow, createOverlayWindow, createStreamWindow } from './windows';
 import { setBlueCursor, resetCursor } from './cursor-manager';
 import { startCursorTracking, stopCursorTracking } from './cursor-follower';
+import { createCursorOverlayWindow, updateCursorState, destroyCursorWindow } from './cursor-window';
 import { IPC, type StreamVisibility, type StreamWindowBounds, type LocalConnection } from '../shared/types';
 import { AUDIO_IPC } from './services/audio-capture';
 import * as chatHistory from './services/chat-history-store';
@@ -112,6 +113,10 @@ app.whenReady().then(() => {
       lastVoiceState = state;
       sendToAll(IPC.VOICE_STATE_CHANGED, state);
       updateStreamForVoiceState(state);
+      // Update cursor state based on voice state
+      if (state === 'idle') {
+        updateCursorState('idle');
+      }
     },
     onTranscriptUpdate: (result) => sendToAll(IPC.TRANSCRIPT_UPDATE, result),
     onAiResponseChunk: (chunk) => {
@@ -160,7 +165,7 @@ app.whenReady().then(() => {
   // Create the transparent stream window (hidden until the user opts in).
   {
     const settings = companion.getSettings();
-    streamWindow = createStreamWindow(settings.streamWindowBounds);
+    streamWindow = createStreamWindow(settings.streamWindowBounds ?? {x: 0, y: 0, width: 800, height: 600});
     streamWindow.on('close', (e) => {
       // Don't let the user actually close the stream — just hide it and
       // flip the setting off so the toggle in General reflects reality.
@@ -174,6 +179,10 @@ app.whenReady().then(() => {
     streamWindow.on('resized', persistStreamBounds);
     applyStreamVisibility(settings.streamVisibility);
   }
+
+  // Create cursor overlay window for primary display
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const cursorWin = createCursorOverlayWindow(primaryDisplay);
 
   // Sync the OS login-item state with our stored preference. Handles
   // the case where the user disables the login item externally (e.g.
@@ -423,12 +432,13 @@ function togglePanel(): void {
       panelWindow.hide();
       return;
     }
-    panelWindow.show();
-    panelWindow.focus();
+    panelWindow?.show();
+    panelWindow?.focus();
     return;
   }
 
-  panelWindow = createPanelWindow();
+  panelWindow = createMainWindow();
+  if (!panelWindow) return;
   panelWindow.webContents.on('did-fail-load', (_e, code, desc, url) => {
     console.error('[Flicky] Panel FAILED to load:', code, desc, url);
   });
@@ -440,8 +450,8 @@ function togglePanel(): void {
     }
   });
 
-  panelWindow.show();
-  panelWindow.focus();
+  panelWindow?.show();
+  panelWindow?.focus();
 }
 
 function rebuildOverlays(): void {

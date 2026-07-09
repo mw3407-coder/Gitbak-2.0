@@ -24,6 +24,22 @@ const CursorOverlay: React.FC<CursorOverlayProps> = ({
 
   const [pointing, setPointing] = useState(false);
 
+  // Listen for cursor state events from main process
+  useEffect(() => {
+    const handler = (e: CustomEvent) => {
+      const data = e.detail;
+      setPointing(data.state === 'pointing');
+      if (data.target) {
+        targetPos.current = { x: data.target.x, y: data.target.y };
+        isStuck.current = data.state === 'pointing';
+      } else {
+        isStuck.current = false;
+      }
+    };
+    window.addEventListener('cursor-state', handler);
+    return () => window.removeEventListener('cursor-state', handler);
+  }, []);
+
   useEffect(() => {
     isStuck.current = isPointing;
     targetPos.current = { x: targetX ?? 0, y: targetY ?? 0 };
