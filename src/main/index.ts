@@ -127,7 +127,14 @@ app.whenReady().then(() => {
       sendToPanel(IPC.AI_RESPONSE_COMPLETE, text);
       sendToStream(IPC.AI_RESPONSE_COMPLETE, text);
     },
-    onElementDetected: (el) => sendToOverlays(IPC.ELEMENT_DETECTED, el),
+    onElementDetected: (el) => {
+      sendToOverlays(IPC.ELEMENT_DETECTED, el);
+      if (el) {
+        updateCursorState('pointing', { x: el.x, y: el.y });
+      } else {
+        updateCursorState('idle');
+      }
+    },
     onSettingsChanged: (s) => sendToPanel(IPC.SETTINGS_CHANGED, s),
     onMemoryStatsChanged: (stats) => sendToPanel(IPC.MEMORY_STATS, stats),
     onChatEntryAdded: (entry) => sendToPanel(IPC.CHAT_ENTRY_ADDED, entry),
